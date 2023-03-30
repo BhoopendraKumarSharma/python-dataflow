@@ -1,1 +1,17 @@
 python bks-custom-df.py --project=vivid-argon-376508 --region=us-central1 --runner=DataflowRunner --staging_location=gs://bks-df-processing/tmp1/ --temp_location=gs://bks-df-processing/tmp2/ --save_main_session
+
+
+(venv) C:\Users\b0s05xh\PycharmProjects\cdr-dataflow>python gcp-custom-dataflow_template.py --project=wmt-cc-datasphere-dev --region=us-central1 -- subnetwork='https://www.googleapis.com/compute/v1/projects/shared-vpc-admin/regions/u
+s-central1/subnetworks/prod-us-central1-01' --runner=DataflowRunner --staging_location=gs://cisco-cdr-dataflow-pipeline-test/temp01/ --temp_location=gs://cisco-cdr-dataflow-pipeline-test/temp02/ --save_main_session
+Traceback (most recent call last):
+  File "gcp-custom-dataflow_template.py", line 7, in <module>
+    import apache_beam as beam
+  File "C:\Users\b0s05xh\PycharmProjects\cdr-dataflow\venv\lib\site-packages\apache_beam\__init__.py", line 93, in <module>
+    from apache_beam import io
+  File "C:\Users\b0s05xh\PycharmProjects\cdr-dataflow\venv\lib\site-packages\apache_beam\io\__init__.py", line 28, in <module>
+    from apache_beam.io.parquetio import *
+  File "C:\Users\b0s05xh\PycharmProjects\cdr-dataflow\venv\lib\site-packages\apache_beam\io\parquetio.py", line 679, in <module>
+    class _ParquetSink(filebasedsink.FileBasedSink):
+  File "C:\Users\b0s05xh\PycharmProjects\cdr-dataflow\venv\lib\site-packages\apache_beam\io\parquetio.py", line 733, in _ParquetSink
+    def write_record(self, writer, table: pa.Table):
+AttributeError: 'NoneType' object has no attribute 'Table'

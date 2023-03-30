@@ -1,0 +1,1 @@
+python bks-custom-df.py --project=vivid-argon-376508 --region=us-central1 --runner=DataflowRunner --staging_location=gs://bks-df-processing/tmp1/ --temp_location=gs://bks-df-processing/tmp2/ --save_main_session

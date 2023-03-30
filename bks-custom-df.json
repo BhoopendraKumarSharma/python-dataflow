@@ -1,0 +1,41 @@
+{
+  "name": "CustomTemplate",
+  "description": "A custom template for running a Python script",
+  "parameters": [
+    {
+      "name": "input",
+      "label": "Input path",
+      "helpText": "Input file path to process",
+      "isOptional": false,
+      "type": "GCS_READ"
+    },
+    {
+      "name": "output",
+      "label": "Output BQ table",
+      "helpText": "Output BigQuery table to write results to",
+      "isOptional": false,
+      "type": "TEXT"
+    },
+    {
+      "name": "destination_bucket",
+      "label": "Destination GCS Bucket",
+      "helpText": "Destination GCS bucket for processed files",
+      "isOptional": false,
+      "type": "GCS_WRITE"
+    },
+    {
+      "name": "temp_location",
+      "label": "Temporary Location",
+      "helpText": "Temporary location for storing files",
+      "isOptional": false,
+      "type": "GCS_WRITE"
+    }
+  ],
+  "sdkInfo": {
+    "language": "PYTHON",
+    "version": "3.8"
+  },
+  "executionInfo": {
+    "sdkLocation": "gs://bks-custom-df-templates/custom-template.py"
+  }
+}

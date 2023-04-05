@@ -1,0 +1,94 @@
+import csv
+import logging
+from io import StringIO
+from datetime import datetime
+import os
+
+import apache_beam as beam
+from apache_beam.io import fileio
+
+from apache_beam.io.gcp.internal.clients import bigquery
+from apache_beam.options.pipeline_options import PipelineOptions, StandardOptions
+from apache_beam.transforms import trigger
+from apache_beam.transforms.window import FixedWindows
+
+os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = "vivid-argon-376508-f773dd3b2532.json"
+
+
+def parse_csv(line):
+    # Read the CSV line using the csv module
+    csv_reader = csv.reader(StringIO(line), delimiter=',')
+    # Skip the header row
+    next(csv_reader)
+    for row in csv_reader:
+        # Extract the desired fields and create a dictionary
+        record = {
+            "dhc_id": int(row[0]),
+            "domain_id": int(row[1]),
+            "domain": row[2],
+            "full_name": row[4],
+            "city": row[16],
+            "state": row[17],
+        }
+        return record
+
+
+def file_prefix(file_metadata, destination_bucket):
+    logging.info(f"metadata: {file_metadata}")
+    logging.info(f"metadata.path: {file_metadata.metadata.path}")
+    now = datetime.now()
+    date_string = now.strftime("%Y-%m-%d")
+    original_file_name = file_metadata.metadata.path.split("/")[-1]
+    return f"{destination_bucket}/{date_string}/{original_file_name}"
+
+
+def run(argv=None):
+    # Hardcode your input parameters here
+    input_path = "gs://bks-pipeline-test/*.csv"
+    output_table = "vivid-argon-376508:bksdatasets001.bks-df-test"
+    destination_bucket = "gs://df-data-output/"
+    poll_interval = 60
+    window_size = 300
+
+    pipeline_options = PipelineOptions(argv)
+    pipeline_options.view_as(
+        beam.options.pipeline_options.GoogleCloudOptions).region = "us-central1"
+    pipeline_options.view_as(StandardOptions).streaming = True
+
+    with beam.Pipeline(options=pipeline_options) as p:
+        input_file_patterns = p | "Create File Patterns" >> beam.Create([input_path])
+
+        csv_lines = (
+                input_file_patterns
+                | "Apply Windowing" >> beam.WindowInto(FixedWindows(window_size),
+                                                       trigger=trigger.Repeatedly(trigger.AfterCount(poll_interval)),
+                                                       accumulation_mode=trigger.AccumulationMode.DISCARDING)
+                | "ReadAll from GCS" >> beam.io.ReadAllFromText()
+                | "ParseCSV" >> beam.FlatMap(parse_csv)
+        )
+
+        bq_output = (
+                csv_lines
+                | "WriteToBigQuery" >> beam.io.WriteToBigQuery(
+            table=output_table,
+            schema='dhc_id:INTEGER,domain_id:INTEGER,domain:STRING,city:STRING,state:STRING',
+            create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
+            write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND,
+        )
+        )
+
+        move_files = (
+                input_file_patterns
+                | "MatchAllFiles2" >> fileio.MatchAll()
+                | "ReadMatches2" >> fileio.ReadMatches()
+                | "WriteToGCS" >> fileio.WriteToFiles(
+            path=destination_bucket,
+            destination=lambda file_info: file_prefix(file_info, destination_bucket),
+            sink=lambda _, temp_dir: fileio.FileWriter(temp_dir),
+        )
+        )
+
+
+if __name__ == "__main__":
+    logging.getLogger().setLevel(logging.INFO)
+    run()

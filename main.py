@@ -1,62 +1,36 @@
-import apache_beam as beam
-from apache_beam.options.pipeline_options import PipelineOptions
-from apache_beam.options.value_provider import StaticValueProvider
-from apache_beam.io import WriteToText
+# entry point for the program
+
+from gcs_manager import *
 from datetime import datetime
 
-# Define your input and output paths
-input_path = "gs://my-bucket/input/*.txt"
-output_table = "my-project:my_dataset.my_table"
-output_path = "gs://my-bucket/output"
+my_cred_file = 'wmt-cc-datasphere-prod.json'
+bucket_name = 'dev_cucm_cdr_archive'
+blob_name: str = 'media'
+file_name: str = bucket_name + '_' + str(datetime.now()) + '.txt'
 
-# Define your Dataflow options
-options = PipelineOptions()
-options.view_as(
-    beam.options.pipeline_options.GoogleCloudOptions).project = "my-project"
-options.view_as(
-    beam.options.pipeline_options.GoogleCloudOptions).region = "us-central1"
-options.view_as(
-    beam.options.pipeline_options.GoogleCloudOptions).job_name = "my-job"
-options.view_as(
-    beam.options.pipeline_options.GoogleCloudOptions).staging_location = "gs://my-bucket/staging"
-options.view_as(
-    beam.options.pipeline_options.GoogleCloudOptions).temp_location = "gs://my-bucket/temp"
-options.view_as(
-    beam.options.pipeline_options.GoogleCloudOptions).subnetwork = StaticValueProvider(str,
-                                                                                       'projects/my-project/regions'
-                                                                                       '/us-central1/subnetworks/my'
-                                                                                       '-subnetwork')
-options.view_as(
-    beam.options.pipeline_options.GoogleCloudOptions).use_public_ips = False  # Set to True for public IPs, False for
-# private IPs
+# test for checking connection manager
+make_connection = test_authentication(my_cred_file)
+print(make_connection)  # should return true in case of a successful connection
+
+# test for creating a bucket
+bucket_to_be_created = 'dev_cucm_test_to_be_deleted'
+new_bucket = create_bucket_class_location(my_cred_file, bucket_to_be_created)
+print(new_bucket) # expected to return the 'bucket_to_be_created' value or error message
 
 
-# Define your processing function
-def process_file(line):
-    location = line.strip()
-    # Perform any necessary data transformations here
-    return {"location": location}
+# # test for listing down the buckets in the project
+buckets = list_buckets(my_cred_file)
+print(buckets)  # should return the list of buckets or the error message
 
 
-# Define your Dataflow pipeline
-with beam.Pipeline(options=options) as p:
-    # Read text files from GCS
-    lines = p | "Read from GCS" >> beam.io.ReadFromText(input_path)
+# # test for listing sub-dirs in a bucket
+subdirs = list_subdirs_in_bucket(my_cred_file, 'cucm_cdr_errors')
+print(subdirs)
 
-    # Process the data using the transform function
-    transformed = lines | "Transform Data" >> beam.Map(process_file)
+# test for writing a file to given sub-dir of a bucket
+# write_string_to_file(credentials_json, bucket_name, sub_dir, file_name, string)
+# print(write_string_to_file(my_cred_file, 'dev_cucm_cdr_archive', 'c23', 'test.txt', 'test'));
 
-    # Write the data to BigQuery
-    transformed | "Write to BigQuery" >> beam.io.WriteToBigQuery(
-        output_table,
-        schema="location:STRING",
-        create_disposition=beam.io.BigQueryDisposition.CREATE_IF_NEEDED,
-        write_disposition=beam.io.BigQueryDisposition.WRITE_APPEND)
-
-    # Move processed files to a new bucket
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    output_prefix = f"{output_path}/processed_files_{timestamp}"
-    lines | "Write to GCS" >> WriteToText(output_prefix)
-
-    # Delete original files from input bucket
-    p | "Delete input files" >> beam.io.gcp.gcs.DeleteFromGCS(input_path)
+# test for deleting an object
+# delete_blob(credentials_json, bucket_name, blob_name)
+# print(delete_blob(my_cred_file, 'dev_cucm_cdr_archive', 'c23/test.txt'))
